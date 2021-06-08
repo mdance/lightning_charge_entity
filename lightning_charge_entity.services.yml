@@ -1,0 +1,20 @@
+services:
+  lightning_charge_entity:
+    class: Drupal\lightning_charge_entity\LightningChargeEntityService
+    arguments:
+      - '@request_stack'
+      - '@session'
+      - '@database'
+      - '@current_user'
+      - '@entity_type.manager'
+      - '@entity_type.bundle.info'
+      - '@entity_display.repository'
+      - '@config.factory'
+      - '@event_dispatcher'
+      - '@lightning_charge'
+  lightning_charge_entity.event_subscriber:
+    class: Drupal\lightning_charge_entity\EventSubscriber\LightningChargeEntityEventSubscriber
+    arguments:
+      - '@entity_type.manager'
+    tags:
+      - { name: event_subscriber }

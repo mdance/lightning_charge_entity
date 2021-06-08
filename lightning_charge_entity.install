@@ -1,0 +1,103 @@
+<?php
+/**
+ * @file
+ * Provides install and update hooks.
+ */
+
+use Drupal\lightning_charge_entity\LightningChargeEntityConstants;
+
+/**
+ * Implements hook_schema().
+ */
+function lightning_charge_entity_schema() {
+  $output[LightningChargeEntityConstants::TABLE] = [
+    'fields' => [
+      'id' => [
+        'descriptipn' => 'Provides the id',
+        'type' => 'serial',
+        'not null' => TRUE,
+      ],
+      'entity_type' => [
+        'description' => 'Provides the entity type',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ],
+      'entity_id' => [
+        'description' => 'Provides the entity id',
+        'type' => 'int',
+        'not null' => TRUE,
+      ],
+      'view_mode' => [
+        'description' => 'Provides the view mode',
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => '',
+      ],
+      'price_mode' => [
+        'description' => 'Provides the price mode',
+        'type' => 'varchar',
+        'length' => 255,
+        'default' => '',
+      ],
+      'price' => [
+        'description' => 'Provides the price',
+        'type' => 'numeric',
+        'precision' => 19,
+        'scale' => 6,
+      ],
+      'currency_code' => [
+        'description' => 'Provides the currency code.',
+        'type' => 'varchar',
+        'length' => 3,
+      ],
+    ],
+    'primary key' => ['id'],
+    'unique keys' => [
+      'default' => [
+        'entity_type',
+        'entity_id',
+        'view_mode',
+      ],
+    ],
+    'indexes' => [
+      'entity_type_entity_id' => [
+        'entity_type',
+        'entity_id',
+      ],
+    ],
+  ];
+
+  $output[LightningChargeEntityConstants::TABLE_INVOICES] = [
+    'fields' => [
+      'id' => [
+        'descriptipn' => 'Provides the id',
+        'type' => 'serial',
+        'not null' => TRUE,
+      ],
+      'invoice_id' => [
+        'description' => 'Provides the invoice id',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ],
+      'hash' => [
+        'description' => 'Provides the invoice hash',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ],
+    ],
+    'primary key' => ['id'],
+    'indexes' => [
+      'hash' => [
+        'hash',
+      ],
+    ],
+  ];
+
+  return $output;
+}

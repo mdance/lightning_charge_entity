@@ -1,0 +1,10 @@
+lightning_charge_entity.settings:
+  path: '/admin/config/services/lightning-charge/entities'
+  defaults:
+    _form: '\Drupal\lightning_charge_entity\Form\SettingsForm'
+    _title: 'Lightning Charge Entities'
+  requirements:
+    _permission: 'administer lightning_charge_entity'
+
+route_callbacks:
+  - '\Drupal\lightning_charge_entity\Routing\LightningChargeEntityRoutes::routes'

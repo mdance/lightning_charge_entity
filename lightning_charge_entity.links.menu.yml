@@ -1,0 +1,5 @@
+lightning_charge_entity.settings:
+  title: 'Entities'
+  description: 'Configure lightning charge entities functionality.'
+  route_name: lightning_charge_entity.settings
+  parent: lightning_charge.settings

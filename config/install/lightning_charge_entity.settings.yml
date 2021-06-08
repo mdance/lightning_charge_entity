@@ -1,0 +1,46 @@
+price:
+  number: '1.00'
+  currency_code: USD
+entity_types:
+  node: node
+price_mode: custom
+node:
+  price_mode: inherit
+  price:
+    number: '1.00'
+    currency_code: USD
+  overrides: 1
+  bundles:
+    enabled:
+      article: article
+      page: page
+    article:
+      price_mode: inherit
+      price:
+        number: '1.00'
+        currency_code: USD
+      instances: 1
+      overrides: 1
+      view_modes:
+        enabled:
+          full: full
+        full:
+          price_mode: inherit
+          price:
+            number: '1.00'
+            currency_code: USD
+    page:
+      price_mode: inherit
+      price:
+        number: '1.00'
+        currency_code: USD
+      instances: 1
+      overrides: 1
+      view_modes:
+        enabled:
+          full: full
+        full:
+          price_mode: inherit
+          price:
+            number: '1.00'
+            currency_code: USD

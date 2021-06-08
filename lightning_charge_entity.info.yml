@@ -1,0 +1,7 @@
+name: Lightning Charge Entity
+type: module
+description: 'Provides lightning charge entity functionality.'
+package: Lightning
+core_version_requirement: ^8 || ^9
+dependencies:
+  - lightning_charge

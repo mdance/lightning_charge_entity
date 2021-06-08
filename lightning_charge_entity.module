@@ -1,0 +1,296 @@
+<?php
+/**
+ * @file
+ * Provides lightning charge entity functionality.
+ */
+
+use Drupal\Core\Render\Element;
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\Component\Utility\Html;
+use Drupal\lightning_charge\LightningChargeConstants;
+use Drupal\lightning_charge_entity\LightningChargeEntityConstants;
+use Drupal\Component\Utility\NestedArray;
+
+/**
+ * Implements hook_entity_view().
+ */
+function lightning_charge_entity_entity_view(array &$build, EntityInterface $entity, EntityViewDisplayInterface $display, $view_mode) {
+  /** @var \Drupal\lightning_charge_entity\LightningChargeEntityServiceInterface $service */
+  $service = \Drupal::service('lightning_charge_entity');
+
+  $result = $service->isEnabled($entity, $view_mode);
+
+  if (!$result) {
+    return;
+  }
+
+  $key = 'lightning_charge_entity';
+
+  $paid = FALSE;
+
+  try {
+    $invoices = $service->getInvoices($entity, $view_mode, $hash);
+
+    if ($invoices) {
+      foreach ($invoices as $id => $invoice) {
+        $status = $invoice->getStatus();
+
+        if ($status == LightningChargeConstants::STATUS_EXPIRED) {
+          continue;
+        }
+        else {
+          if ($status == LightningChargeConstants::STATUS_PAID) {
+            $paid = TRUE;
+
+            break;
+          }
+        }
+
+        $wrapper_id = LightningChargeEntityConstants::PREFIX . $hash;
+
+        $build[$key] = $invoice->toRenderable();
+
+        $build['#attributes']['id'] = $wrapper_id;
+      }
+    }
+  } catch (Exception $e) {
+    $build[$key] = [
+      '#markup' => t('The content is not available at this time, please try again later.'),
+    ];
+  }
+
+  if (!$paid) {
+    $keys = Element::children($build);
+
+    if (is_array($keys)) {
+      // @todo Refactor to dispatch an event
+      $ignored = [
+        $key,
+        'uid',
+        'title',
+        'created',
+        'links',
+      ];
+
+      foreach ($keys as $key) {
+        if (in_array($key, $ignored)) {
+          continue;
+        }
+
+        $child = &$build[$key];
+
+        $child['#access'] = FALSE;
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_preprocess_node().
+ */
+function lightning_charge_entity_preprocess_node(&$variables) {
+  $route_match = \Drupal::routeMatch();
+  $route_name = $route_match->getRouteName();
+
+  if ($route_name == 'lightning_charge.js') {
+    $variables['page'] = TRUE;
+  }
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function lightning_charge_entity_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  $account = Drupal::currentUser();
+
+  $access = $account->hasPermission(LightningChargeEntityConstants::PERMISSION_INSTANCES);
+
+  $form_object = $form_state->getFormObject();
+
+  $method = 'getEntity';
+
+  if (!method_exists($form_object, $method)) {
+    return;
+  }
+
+  /** @var EntityInterface $entity */
+  $entity = $form_object->$method();
+
+  $entity_type = $entity->getEntityTypeId();
+  $bundle = $entity->bundle();
+
+  /** @var \Drupal\lightning_charge_entity\LightningChargeEntityServiceInterface $service */
+  $service = Drupal::service('lightning_charge_entity');
+
+  $access = $access && $service->isEnabled($entity);
+
+  $key = 'lightning_charge_entity';
+
+  $form[$key] = [
+    '#type' => 'details',
+    '#title' => t('Payment Settings'),
+    '#access' => $access,
+    '#open' => TRUE,
+    '#group' => 'advanced',
+    '#tree' => TRUE,
+    '#weight' => -2,
+  ];
+
+  $container = &$form[$key];
+
+  $params = [];
+
+  $params['entity_type'] = $entity_type;
+  $params['bundle'] = $bundle;
+  $params['entity'] = $entity;
+
+  $result = $service->getOverrides($params);
+
+  if ($result) {
+    $view_modes = $service->getEnabledViewModes($entity_type, $bundle);
+
+    foreach ($view_modes as $k => $v) {
+      $args = [];
+
+      $args['@label'] = $v;
+
+      $title = t('@label Settings', $args);
+
+      $container[$k] = [
+        '#type' => 'details',
+        '#title' => $title,
+        '#open' => TRUE,
+      ];
+
+      $subcontainer = &$container[$k];
+
+      $key = 'price_mode';
+
+      $options = $service->getPriceModes();
+
+      $params['view_mode'] = $k;
+
+      $default_value = $service->getPriceMode($params);
+
+      $selector = $entity_type . '-' . $bundle . '-' . $key;
+
+      $subcontainer[$key] = [
+        '#type' => 'radios',
+        '#title' => t('Price Mode'),
+        '#options' => $options,
+        '#default_value' => $default_value,
+        '#attributes' => [
+          'class' => [
+            $selector,
+          ],
+        ],
+      ];
+
+      $key = 'price';
+
+      $default_value = $service->getPrice($params);
+
+      $subcontainer[$key] = [
+        '#type' => 'commerce_price',
+        '#title' => t('Price'),
+        '#default_value' => $default_value,
+        '#states' => [
+          'visible' => [
+            ".$selector" => [
+              'value' => LightningChargeEntityConstants::PRICE_MODE_CUSTOM,
+            ],
+          ],
+        ],
+      ];
+    }
+  } else {
+    $key = 'price_mode';
+
+    $options = $service->getPriceModes();
+
+    $default_value = $service->getPriceMode($params);
+
+    $selector = $entity_type . '-' . $bundle . '-' . $key;
+
+    $container[$key] = [
+      '#type' => 'radios',
+      '#title' => t('Price Mode'),
+      '#options' => $options,
+      '#default_value' => $default_value,
+      '#attributes' => [
+        'class' => [
+          $selector,
+        ],
+      ],
+    ];
+
+    $key = 'price';
+
+    $default_value = $service->getPrice($params);
+
+    $container[$key] = [
+      '#type' => 'commerce_price',
+      '#title' => t('Price'),
+      '#default_value' => $default_value,
+      '#states' => [
+        'visible' => [
+          ".$selector" => [
+            'value' => LightningChargeEntityConstants::PRICE_MODE_CUSTOM,
+          ],
+        ],
+      ],
+    ];
+  }
+
+  $key = 'actions';
+
+  if (isset($form[$key])) {
+    $actions = &$form[$key];
+
+    $keys = array_keys($actions);
+
+    foreach ($keys as $k) {
+      if ($k == 'preview') {
+        continue;
+      }
+
+      $action = &$actions[$k];
+
+      if (isset($action['#type']) && $action['#type'] === 'submit') {
+        $action['#submit'][] = 'lightning_charge_entity_form_submit';
+      }
+    }
+  }
+}
+
+/**
+ * Provides the form submit handler.
+ */
+function lightning_charge_entity_form_submit($form, FormStateInterface $form_state) {
+  $values = $form_state->cleanValues()->getValues();
+
+  $account = Drupal::currentUser();
+
+  $access = $account->hasPermission(LightningChargeEntityConstants::PERMISSION_INSTANCES);
+
+  $entity = $form_state->getFormObject()->getEntity();
+
+  /** @var \Drupal\lightning_charge_entity\LightningChargeEntityServiceInterface $service */
+  $service = Drupal::service('lightning_charge_entity');
+
+  $access = $access && $service->isEnabled($entity);
+
+  if (!$access) {
+    return;
+  }
+
+  $key = 'lightning_charge_entity';
+
+  if (isset($values[$key])) {
+    $subvalues = &$values[$key];
+
+    $service->saveEntity($entity, $subvalues);
+  }
+}

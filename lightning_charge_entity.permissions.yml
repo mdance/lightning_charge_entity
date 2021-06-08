@@ -1,0 +1,10 @@
+administer lightning_charge_entity:
+  title: 'Administer Lightning Charge Entities'
+  description: 'Configure the lightning charge entities functionality.'
+  restrict access: TRUE
+
+view lightning_charge_entity invoices:
+  title: 'View Lightning Charge Entity Invoices'
+
+permission_callbacks:
+  - \Drupal\lightning_charge_entity\LightningChargeEntityPermissions::buildPermissions

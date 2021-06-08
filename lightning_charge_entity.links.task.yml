@@ -1,0 +1,2 @@
+lightning_charge_entity.invoices:
+  deriver: 'Drupal\lightning_charge_entity\Plugin\Derivative\LightningChargeEntityLocalTasks'
